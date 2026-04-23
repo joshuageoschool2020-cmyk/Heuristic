@@ -36,6 +36,13 @@ const LANGUAGES = [
 ] as const;
 
 const LEVELS = ["Age 10", "Age 15", "University"] as const;
+const SUBTITLE_PHRASES = [
+  "Understand anything. In your language.",
+  "Explain differently until you get it.",
+  "Your level. Your language. Your way.",
+  "Intelligence for everyone. Everywhere.",
+  "Finally understand anything."
+] as const;
 
 export default function Home() {
   const [text, setText] = useState("");
@@ -49,15 +56,17 @@ export default function Home() {
   const [lastGeneratedItem, setLastGeneratedItem] = useState<SavedExplanation | null>(null);
   const [isSaved, setIsSaved] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
-  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [subtitleText, setSubtitleText] = useState("");
+  const explanationTypingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const subtitleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setRecentItems(readRecentExplanations());
   }, []);
 
   useEffect(() => {
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
+    if (explanationTypingTimeoutRef.current) {
+      clearTimeout(explanationTypingTimeoutRef.current);
     }
 
     if (!explanation) {
@@ -75,20 +84,61 @@ export default function Home() {
       setDisplayedExplanation(explanation.slice(0, index));
 
       if (index < explanation.length) {
-        typingTimeoutRef.current = setTimeout(typeNextCharacter, 9);
+        explanationTypingTimeoutRef.current = setTimeout(typeNextCharacter, 9);
       } else {
         setIsTyping(false);
       }
     };
 
-    typingTimeoutRef.current = setTimeout(typeNextCharacter, 9);
+    explanationTypingTimeoutRef.current = setTimeout(typeNextCharacter, 9);
 
     return () => {
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
+      if (explanationTypingTimeoutRef.current) {
+        clearTimeout(explanationTypingTimeoutRef.current);
       }
     };
   }, [explanation]);
+
+  useEffect(() => {
+    let phraseIndex = 0;
+    let charIndex = 0;
+    let isDeleting = false;
+
+    const tick = () => {
+      const activePhrase = SUBTITLE_PHRASES[phraseIndex];
+      const nextLength = isDeleting ? charIndex - 1 : charIndex + 1;
+      charIndex = Math.max(0, Math.min(activePhrase.length, nextLength));
+      setSubtitleText(activePhrase.slice(0, charIndex));
+
+      if (!isDeleting && charIndex === activePhrase.length) {
+        subtitleTimeoutRef.current = setTimeout(() => {
+          isDeleting = true;
+          tick();
+        }, 2000);
+        return;
+      }
+
+      if (isDeleting && charIndex === 0) {
+        isDeleting = false;
+        phraseIndex = (phraseIndex + 1) % SUBTITLE_PHRASES.length;
+        subtitleTimeoutRef.current = setTimeout(tick, 220);
+        return;
+      }
+
+      const delay = isDeleting
+        ? 28 + Math.floor(Math.random() * 20)
+        : 42 + Math.floor(Math.random() * 36);
+      subtitleTimeoutRef.current = setTimeout(tick, delay);
+    };
+
+    tick();
+
+    return () => {
+      if (subtitleTimeoutRef.current) {
+        clearTimeout(subtitleTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const wordCount = useMemo(() => {
     const trimmed = text.trim();
@@ -185,8 +235,9 @@ export default function Home() {
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-7">
         <header className="space-y-3 text-center animate-fade-in">
           <h1 className="text-3xl font-bold tracking-tight md:text-4xl">Understand faster</h1>
-          <p className="text-sm text-white/90 md:text-base">
-            Understand anything. In your language. At your level.
+          <p className="min-h-6 text-sm text-[#06B6D4] md:text-base">
+            {subtitleText}
+            <span className="type-cursor" aria-hidden />
           </p>
           <div className="inline-flex rounded-full border border-[#5F57FF]/40 bg-[#5F57FF]/20 px-3 py-1 text-xs font-semibold text-[#C0BCFF]">
             AI Powered
